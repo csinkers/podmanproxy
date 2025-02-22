@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace PodProxy.Client;
+namespace PodmanProxy.Client;
 
 public class ClientWorker(IConfiguration configuration, ILogger<ClientWorker> logger) : BackgroundService
 {

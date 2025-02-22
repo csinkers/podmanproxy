@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace PodProxy.Client;
+namespace PodmanProxy.Client;
 
 /// <summary>
 /// Small client program to run on the podman WSL2 VM that
