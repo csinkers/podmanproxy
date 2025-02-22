@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		config.json = config.json
 		LICENSE.md = LICENSE.md
 		README.md = README.md
+		setup-client.sh = setup-client.sh
+		Setup.ps1 = Setup.ps1
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PodmanProxy.Client", "src\PodmanProxy.Client\PodmanProxy.Client.csproj", "{685741BC-350D-413E-BCD0-45A847B4AE1A}"

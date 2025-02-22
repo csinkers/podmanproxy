@@ -1,5 +1,7 @@
 param([Parameter(mandatory=$true)][String] $configPath)
 
+# This script is used to setup the PodmanProxy service on Windows
+
 $absConfigPath = Resolve-Path -Path $configPath
 
 if (Get-Service PodmanProxy -ErrorAction SilentlyContinue) {
