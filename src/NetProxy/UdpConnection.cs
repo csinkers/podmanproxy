@@ -22,7 +22,7 @@ internal class UdpConnection
     long _totalBytesForwarded;
     long _totalBytesResponded;
 
-    public long LastActivity { get; private set; } = Environment.TickCount64;
+    public long LastActivityTickCount { get; private set; } = Environment.TickCount64;
 
     public UdpConnection(ILogger log, UdpClient localServer, IPEndPoint sourceEndpoint, IPEndPoint remoteEndpoint)
     {
@@ -40,7 +40,7 @@ internal class UdpConnection
 
     public async Task SendToServerAsync(byte[] message)
     {
-        LastActivity = Environment.TickCount64;
+        LastActivityTickCount = Environment.TickCount64;
 
         await _forwardConnectionBindCompleted.Task.ConfigureAwait(false);
         var sent = await _forwardClient.SendAsync(message, message.Length, _remoteEndpoint).ConfigureAwait(false);
@@ -63,7 +63,7 @@ internal class UdpConnection
                     try
                     {
                         var result = await _forwardClient.ReceiveAsync().ConfigureAwait(false);
-                        LastActivity = Environment.TickCount64;
+                        LastActivityTickCount = Environment.TickCount64;
                         var sent = await _localServer.SendAsync(result.Buffer, result.Buffer.Length, _sourceEndpoint).ConfigureAwait(false);
                         Interlocked.Add(ref _totalBytesResponded, sent);
                     }

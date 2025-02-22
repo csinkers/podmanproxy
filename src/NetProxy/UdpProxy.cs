@@ -22,8 +22,8 @@ internal static class UdpProxy
         var ip = IPAddress.Parse(config.ForwardIp);
         var remoteServerEndPoint = new IPEndPoint(ip, config.ForwardPort);
 
-        var localServer = new UdpClient(AddressFamily.InterNetwork);
-        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.Any: IPAddress.Parse(config.LocalIp);
+        using var localServer = new UdpClient(AddressFamily.InterNetwork);
+        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.Any : IPAddress.Parse(config.LocalIp);
         localServer.Client.Bind(new IPEndPoint(localIpAddress, config.LocalPort));
 
         log.LogInformation($"UDP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
@@ -37,7 +37,7 @@ internal static class UdpProxy
                     await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
                     foreach (var connection in connections.ToArray())
                     {
-                        if (connection.Value.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
+                        if (connection.Value.LastActivityTickCount + ConnectionTimeoutMilliseconds < Environment.TickCount64)
                         {
                             log.LogDebug($"Cleaning up idle UDP connection {connection.Key}");
                             connections.TryRemove(connection.Key, out _);
@@ -71,5 +71,7 @@ internal static class UdpProxy
                 log.LogWarning($"An exception occurred on receiving a client datagram: {ex}");
             }
         }
+
+        log.LogInformation($"UDP proxy stopped [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
     }
 }

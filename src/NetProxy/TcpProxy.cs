@@ -21,7 +21,7 @@ public static class TcpProxy
         var connections = new ConcurrentBag<TcpConnection>();
 
         IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.Any : IPAddress.Parse(config.LocalIp);
-        var localServer = new TcpListener(new IPEndPoint(localIpAddress, config.LocalPort));
+        using var localServer = new TcpListener(new IPEndPoint(localIpAddress, config.LocalPort));
         localServer.Start();
 
         log.LogInformation($"TCP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
@@ -40,8 +40,9 @@ public static class TcpProxy
 
                     foreach (var tcpConnection in tempConnections)
                     {
-                        if (tcpConnection.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
+                        if (tcpConnection.LastActivityTickCount + ConnectionTimeoutMilliseconds < Environment.TickCount64)
                         {
+                            log.LogDebug($"Cleaning up idle TCP connection {tcpConnection}");
                             tcpConnection.Stop();
                         }
                         else
@@ -61,7 +62,9 @@ public static class TcpProxy
                 var ip = IPAddress.Parse(config.ForwardIp);
                 var endpoint = new IPEndPoint(ip, config.ForwardPort);
 
-                var tcpConnection = await TcpConnection.AcceptTcpClientAsync(log, localServer, endpoint, ct).ConfigureAwait(false);
+                var tcpConnection =
+                    await TcpConnection.AcceptTcpClientAsync(log, localServer, endpoint, ct)
+                    .ConfigureAwait(false);
 
                 tcpConnection.Run();
                 connections.Add(tcpConnection);
@@ -72,5 +75,7 @@ public static class TcpProxy
                 log.LogError(ex.ToString());
             }
         }
+
+        log.LogInformation($"TCP proxy stopped [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
     }
 }

@@ -22,7 +22,7 @@ public class TcpConnection
     long _totalBytesForwarded;
     long _totalBytesResponded;
 
-    public long LastActivity { get; private set; } = Environment.TickCount64;
+    public long LastActivityTickCount { get; private set; } = Environment.TickCount64;
 
     public static async Task<TcpConnection> AcceptTcpClientAsync(
         ILogger log,
@@ -118,7 +118,7 @@ public class TcpConnection
                 if (bytesRead == 0)
                     break;
 
-                LastActivity = Environment.TickCount64;
+                LastActivityTickCount = Environment.TickCount64;
                 await destination.WriteAsync(new ReadOnlyMemory<byte>(buffer, 0, bytesRead), ct).ConfigureAwait(false);
 
                 switch (direction)
