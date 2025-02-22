@@ -1,6 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -11,15 +13,19 @@ internal static class Program
 {
     const string Remote = "172.28.27.207"; // TODO: Detect via listening for broadcast packets
 
-    static void Main(string[] args)
+    public static int Main(string[] args)
     {
         var log = new ConsoleLogger();
-        log.LogLevel = LogLevel.Debug;
+        if (args.Length != 1)
+            return PrintUsage();
+
         try
         {
             var cts = new CancellationTokenSource();
+            if (!File.Exists(args[0]))
+                throw new FileNotFoundException("Could not find config file", args[0]);
 
-            var configJson = System.IO.File.ReadAllText("config.json");
+            var configJson = System.IO.File.ReadAllText(args[0]);
             Config? config = Config.Parse(configJson);
             if (config == null)
                 throw new FormatException("Config could not be parsed");
@@ -29,16 +35,45 @@ internal static class Program
             var proxyConfigs = config.ParseProxyConfigs(log);
             var tasks = proxyConfigs.Select(c => ProxyFromConfig(log, c, cts.Token)).ToList();
 
-            while (Console.ReadKey().KeyChar != 'q')
+            Console.WriteLine("Press q to exit, > to increase log verbosity, < to decrease");
+            bool done = false;
+            while (!done)
             {
+                switch (Console.ReadKey().KeyChar)
+                {
+                    case 'q':
+                        done = true;
+                        break;
+
+                    case '>':
+                        if (log.LogLevel > LogLevel.Debug)
+                        {
+                            log.LogLevel--;
+                            Console.WriteLine($"Level: {log.LogLevel}");
+                        }
+
+                        break;
+
+                    case '<':
+                        if (log.LogLevel < LogLevel.Critical)
+                        {
+                            log.LogLevel++;
+                            Console.WriteLine($"Level: {log.LogLevel}");
+                        }
+
+                        break;
+                }
             }
 
             cts.Cancel();
             Task.WhenAll(tasks).Wait(CancellationToken.None);
+
+            return 0;
         }
         catch (Exception ex)
         {
             log.LogError($"An error occurred : {ex}");
+            return 1;
         }
     }
 
@@ -58,5 +93,12 @@ internal static class Program
             log.LogError($"Failed to start proxy : {ex.Message}");
             throw;
         }
+    }
+
+    static int PrintUsage()
+    {
+        var name = Assembly.GetExecutingAssembly().GetName().Name;
+        Console.WriteLine($"Usage: {name} configPath");
+        return 1;
     }
 }
