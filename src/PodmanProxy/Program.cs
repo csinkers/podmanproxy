@@ -1,11 +1,42 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace PodmanProxy;
 
-internal static class Program
+/*
+Install service via Powershell:
+
+New-Service `
+  -Name "PodmanProxy" `
+  -DisplayName "Podman Proxy" `
+  -BinaryPathName "C:\path\to\PodmanProxy.exe --ConfigPath=C:\path\to\config.json" `
+  -StartupType Automatic
+*/
+
+internal class Program
 {
     public static int Main(string[] args)
+    {
+        try
+        {
+            var builder = Host.CreateApplicationBuilder(args);
+            builder.Configuration.AddCommandLine(args);
+            builder.Services.AddWindowsService(options => { options.ServiceName = "Podman Proxy"; });
+            builder.Services.AddHostedService<Worker>();
+
+            var host = builder.Build();
+            host.Run();
+            return 0;
+        }
+        catch (Exception)
+        {
+            return 1;
+        }
+    }
+
+    /* Old CLI implementation
+    public static int RunCli(string[] args)
     {
         var log = new ConsoleLogger();
         if (args.Length != 1)
@@ -64,4 +95,5 @@ internal static class Program
         Console.WriteLine($"Usage: {name} configPath");
         return 1;
     }
+    */
 }
