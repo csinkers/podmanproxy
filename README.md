@@ -1,52 +1,24 @@
-NetProxy
+PodmanProxy
 ========
 
 This originated as a fork of https://github.com/Stormancer/netproxy
 
-NetProxy is a simple ipv6/ipv4 UDP & TCP proxy based on .NET 8.0.
-Tested on *win10-x64* and *ubuntu.16.20-x64*.
+This particular proxy is for the rather specific use-case of running podman on
+WSL2 under Windows 10 where the networking configuration only allows an
+auto-configured virtual switch which picks a new IP each time it starts, and
+podman only seems to allow forwarding TCP ports (and only to the 127.0.0.1
+adaptor at that). Under Win11, the WSL2 networking is more flexible and allows
+mirroring the adaptors of the host machine so a proxy isn't required.
 
-Why? 
-====
-We needed a simple, crossplatform IPV6 compatible UDP forwarder, and couldn't find a satisfying solution. 
-Nginx was obviously a great candidate but building it on Windows with UDP forwarding enabled was quite a pain.
+The proxy server (NetProxy.Cli for ad-hoc use or NetProxy.Worker if running as
+a service) will wait in an idle state until they receive a packet from the
+client on the control port (9188 by default). The NetProxy.Client process should
+be run on the WSL2 machine in order to advertise its address. It simply
+broadcasts a 1-byte UDP packet on the control port every 5 seconds so the server
+can discover it.
 
-The objective is to be able to expose as an ipv6 endpoint a server located in an ipv4 only server provider.
-
-Limitations
-===========
-Each remote client is mapped to a port of the local server therefore:
-- The original IP of the client is hidden to the server the packets are forwarded to.
-- The number of concurrent clients is limited by the number of available ports in the server running the proxy.
-
-Disclaimer
-==========
-Error management exist, but is minimalist. IPV6 is not supported on the forwarding side.
-
-Usage
-=====
-- Compile for your platform following instructions at https://www.microsoft.com/net/core
-- Rewrite the `config.json` file to fit your need
-- Run NetProxy
-
-Configuration
-=============
-`config.json` contains a map of named forwarding rules, for instance :
-
-    {
-     "http": {
-     "localport": 80,
-     "localip":"",
-     "protocol": "tcp",
-     "forwardIp": "xx.xx.xx.xx",
-     "forwardPort": 80
-     },
-    ...
-    }
-
-- *localport* : The local port the forwarder should listen to.
-- *localip* : An optional local binding IP the forwarder should listen to. If empty or missing, it will listen to ANY_ADDRESS.
-- *protocol* : The protocol to forward. `tcp`,`udp`, or `any`.
-- *forwardIp* : The ip the traffic will be forwarded to.
-- *forwardPort* : The port the traffic will be forwarded to.
+Once the client address is discovered, the server will start listening on the
+configured ports and forwarding traffic to the client machine. Any updates to
+the config file, or a message from a new address on the control port (e.g. after
+a WSL2 restart) will cause the proxy to reconfigure itself.
 
