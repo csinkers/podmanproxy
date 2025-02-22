@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
-namespace NetProxy;
+namespace PodmanProxy;
 
 public class Config
 {

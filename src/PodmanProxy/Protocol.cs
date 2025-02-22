@@ -1,4 +1,4 @@
-﻿namespace NetProxy;
+﻿namespace PodmanProxy;
 
 public enum Protocol
 {

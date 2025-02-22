@@ -3,13 +3,10 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <PackAsTool>true</PackAsTool>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <ToolCommandName>netproxy</ToolCommandName>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <Version>0.2</Version>
-    <PackageProjectUrl>https://github.com/Stormancer/netproxy</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/csinkers/podmanproxy</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 

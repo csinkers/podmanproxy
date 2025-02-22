@@ -1,4 +1,4 @@
-﻿namespace NetProxy;
+﻿namespace PodmanProxy;
 
 public record ProxyConfig(string Config, Protocol Protocol, string LocalIp, ushort LocalPort, string ForwardIp, ushort ForwardPort)
 {

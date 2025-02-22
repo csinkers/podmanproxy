@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace NetProxy;
+namespace PodmanProxy;
 
 internal class UdpConnection
 {

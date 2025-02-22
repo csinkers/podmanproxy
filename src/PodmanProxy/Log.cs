@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
 
-namespace NetProxy;
+namespace PodmanProxy;
 
 public class ConsoleLogger : ILogger
 {
