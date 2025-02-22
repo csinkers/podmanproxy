@@ -3,12 +3,14 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
 internal class UdpConnection
 {
     readonly TaskCompletionSource<bool> _forwardConnectionBindCompleted = new();
+    readonly ILogger _log;
     readonly UdpClient _localServer;
     readonly UdpClient _forwardClient;
     readonly IPEndPoint _sourceEndpoint;
@@ -22,8 +24,9 @@ internal class UdpConnection
 
     public long LastActivity { get; private set; } = Environment.TickCount64;
 
-    public UdpConnection(UdpClient localServer, IPEndPoint sourceEndpoint, IPEndPoint remoteEndpoint)
+    public UdpConnection(ILogger log, UdpClient localServer, IPEndPoint sourceEndpoint, IPEndPoint remoteEndpoint)
     {
+        _log = log;
         _localServer = localServer;
         var serverLocalEndpoint = _localServer.Client.LocalEndPoint;
 
@@ -56,7 +59,7 @@ internal class UdpConnection
                 _forwardClient.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
                 _forwardLocalEndpoint = _forwardClient.Client.LocalEndPoint;
                 _forwardConnectionBindCompleted.SetResult(true);
-                Console.WriteLine($"Established UDP {_description}");
+                _log.LogInformation($"Established UDP {_description}");
 
                 while (_isRunning)
                 {
@@ -70,9 +73,7 @@ internal class UdpConnection
                     catch (Exception ex)
                     {
                         if (_isRunning)
-                        {
-                            Console.WriteLine($"An exception occurred while receiving a server datagram : {ex}");
-                        }
+                            _log.LogError($"An exception occurred while receiving a server datagram : {ex}");
                     }
                 }
             }
@@ -83,13 +84,13 @@ internal class UdpConnection
     {
         try
         {
-            Console.WriteLine($"Closed UDP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
+            _log.LogInformation($"Closed UDP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
             _isRunning = false;
             _forwardClient.Close();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An exception occurred while closing UdpConnection : {ex}");
+            _log.LogError($"An exception occurred while closing UdpConnection : {ex}");
         }
     }
 }

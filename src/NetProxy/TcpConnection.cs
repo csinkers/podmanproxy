@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
@@ -15,6 +16,7 @@ public class TcpConnection
     readonly TcpClient _forwardClient;
     readonly CancellationTokenSource _cancellationTokenSource = new();
     readonly string _description;
+    readonly ILogger _log;
 
     EndPoint? _forwardLocalEndpoint;
     long _totalBytesForwarded;
@@ -22,15 +24,16 @@ public class TcpConnection
 
     public long LastActivity { get; private set; } = Environment.TickCount64;
 
-    public static async Task<TcpConnection> AcceptTcpClientAsync(TcpListener tcpListener, IPEndPoint remoteEndpoint)
+    public static async Task<TcpConnection> AcceptTcpClientAsync(ILogger log, TcpListener tcpListener, IPEndPoint remoteEndpoint)
     {
         var localServerConnection = await tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
         localServerConnection.NoDelay = true;
-        return new TcpConnection(localServerConnection, remoteEndpoint);
+        return new TcpConnection(log, localServerConnection, remoteEndpoint);
     }
 
-    TcpConnection(TcpClient localServerConnection, IPEndPoint remoteEndpoint)
+    TcpConnection(ILogger log, TcpClient localServerConnection, IPEndPoint remoteEndpoint)
     {
+        _log = log;
         _localServerConnection = localServerConnection;
         _remoteEndpoint = remoteEndpoint;
         var sourceEndpoint = _localServerConnection.Client.RemoteEndPoint;
@@ -50,7 +53,7 @@ public class TcpConnection
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An exception occurred while closing TcpConnection : {ex}");
+            _log.LogError($"An exception occurred while closing TcpConnection : {ex}");
         }
     }
 
@@ -66,7 +69,7 @@ public class TcpConnection
                     await _forwardClient.ConnectAsync(_remoteEndpoint.Address, _remoteEndpoint.Port, cancellationToken).ConfigureAwait(false);
                     _forwardLocalEndpoint = _forwardClient.Client.LocalEndPoint;
 
-                    Console.WriteLine($"Established TCP {_description}");
+                    _log.LogInformation($"Established TCP {_description}");
 
                     await using (var serverStream = _forwardClient.GetStream())
                     await using (var clientStream = _localServerConnection.GetStream())
@@ -85,11 +88,11 @@ public class TcpConnection
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An exception occurred during TCP stream : {ex}");
+                _log.LogError($"An exception occurred during TCP stream : {ex}");
             }
             finally
             {
-                Console.WriteLine($"Closed TCP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
+                _log.LogInformation($"Closed TCP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
             }
         }, cancellationToken);
     }

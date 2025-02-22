@@ -1,11 +1,13 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
 public interface IProxy
 {
     Task Start(
+        ILogger log,
         string remoteServerHostNameOrAddress,
         ushort remoteServerPort,
         ushort localPort,

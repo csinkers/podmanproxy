@@ -1,10 +1,10 @@
-﻿#nullable enable
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
@@ -12,7 +12,13 @@ internal class UdpProxy : IProxy
 {
     const int ConnectionTimeoutMilliseconds = 4 * 60 * 1000;
 
-    public async Task Start(string remoteServerHostNameOrAddress, ushort remoteServerPort, ushort localPort, string? localIp, CancellationToken ct)
+    public async Task Start(
+        ILogger log,
+        string remoteServerHostNameOrAddress,
+        ushort remoteServerPort,
+        ushort localPort,
+        string? localIp,
+        CancellationToken ct)
     {
         var connections = new ConcurrentDictionary<IPEndPoint, UdpConnection>();
 
@@ -25,9 +31,9 @@ internal class UdpProxy : IProxy
         IPAddress localIpAddress = string.IsNullOrEmpty(localIp) ? IPAddress.IPv6Any : IPAddress.Parse(localIp);
         localServer.Client.Bind(new IPEndPoint(localIpAddress, localPort));
 
-        Console.WriteLine($"UDP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
+        log.LogInformation($"UDP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
 
-        var _ = Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             while (!ct.IsCancellationRequested)
             {
@@ -52,7 +58,7 @@ internal class UdpProxy : IProxy
                 var client = connections.GetOrAdd(sourceEndPoint,
                     ep =>
                     {
-                        var udpConnection = new UdpConnection(localServer, sourceEndPoint, remoteServerEndPoint);
+                        var udpConnection = new UdpConnection(log, localServer, sourceEndPoint, remoteServerEndPoint);
                         udpConnection.Run();
                         return udpConnection;
                     });
@@ -61,7 +67,7 @@ internal class UdpProxy : IProxy
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"an exception occurred on receiving a client datagram: {ex}");
+                log.LogError($"An exception occurred on receiving a client datagram: {ex}");
             }
         }
     }

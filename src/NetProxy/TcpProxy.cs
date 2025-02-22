@@ -1,11 +1,11 @@
-﻿#nullable enable
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
@@ -14,6 +14,7 @@ public class TcpProxy : IProxy
     const int ConnectionTimeoutMilliseconds = 4 * 60 * 1000;
 
     public async Task Start(
+        ILogger log,
         string remoteServerHostNameOrAddress,
         ushort remoteServerPort,
         ushort localPort,
@@ -27,7 +28,7 @@ public class TcpProxy : IProxy
         localServer.Server.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
         localServer.Start();
 
-        Console.WriteLine($"TCP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
+        log.LogInformation($"TCP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
 
         _ = Task.Run(async () =>
         {
@@ -61,17 +62,20 @@ public class TcpProxy : IProxy
             {
                 var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress, ct).ConfigureAwait(false);
 
-                var tcpConnection = await TcpConnection.AcceptTcpClientAsync(localServer,
-                        new IPEndPoint(ips[0], remoteServerPort))
+                var tcpConnection =
+                    await TcpConnection.AcceptTcpClientAsync(
+                        log,
+                        localServer,
+                        new IPEndPoint(ips[0], remoteServerPort)
+                    )
                     .ConfigureAwait(false);
+
                 tcpConnection.Run();
                 connections.Add(tcpConnection);
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(ex);
-                Console.ResetColor();
+                log.LogError(ex.ToString());
             }
         }
     }
