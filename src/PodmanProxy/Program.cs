@@ -4,35 +4,18 @@ using Microsoft.Extensions.Hosting;
 
 namespace PodmanProxy;
 
-/*
-Install service via Powershell:
-
-New-Service `
-  -Name "PodmanProxy" `
-  -DisplayName "Podman Proxy" `
-  -BinaryPathName "C:\path\to\PodmanProxy.exe --ConfigPath=C:\path\to\config.json" `
-  -StartupType Automatic
-*/
-
-internal class Program
+// Note: Install service via Setup.ps1
+internal static class Program
 {
-    public static int Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        try
-        {
-            var builder = Host.CreateApplicationBuilder(args);
-            builder.Configuration.AddCommandLine(args);
-            builder.Services.AddWindowsService(options => { options.ServiceName = "Podman Proxy"; });
-            builder.Services.AddHostedService<Worker>();
+        var builder = Host.CreateApplicationBuilder(args);
+        builder.Configuration.AddCommandLine(args);
+        builder.Services.AddWindowsService(options => { options.ServiceName = "PodmanProxy"; });
+        builder.Services.AddHostedService<Worker>();
 
-            var host = builder.Build();
-            host.Run();
-            return 0;
-        }
-        catch (Exception)
-        {
-            return 1;
-        }
+        var host = builder.Build();
+        await host.RunAsync();
     }
 
     /* Old CLI implementation

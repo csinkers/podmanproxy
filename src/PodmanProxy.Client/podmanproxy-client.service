@@ -1,0 +1,10 @@
+[Unit]
+Description=podmanproxy-client
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/podmanproxy-client
+
+[Install]
+WantedBy=multi-user.target
+
