@@ -4,18 +4,21 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NetProxy;
 
-internal class TcpProxy : IProxy
+public class TcpProxy : IProxy
 {
-    /// <summary>
-    /// Milliseconds
-    /// </summary>
-    public int ConnectionTimeout { get; set; } = (4 * 60 * 1000);
+    const int ConnectionTimeoutMilliseconds = 4 * 60 * 1000;
 
-    public async Task Start(string remoteServerHostNameOrAddress, ushort remoteServerPort, ushort localPort, string? localIp)
+    public async Task Start(
+        string remoteServerHostNameOrAddress,
+        ushort remoteServerPort,
+        ushort localPort,
+        string? localIp,
+        CancellationToken ct)
     {
         var connections = new ConcurrentBag<TcpConnection>();
 
@@ -26,11 +29,11 @@ internal class TcpProxy : IProxy
 
         Console.WriteLine($"TCP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
 
-        var _ = Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
-            while (true)
+            while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
 
                 var tempConnections = new List<TcpConnection>(connections.Count);
                 while (connections.TryTake(out var connection))
@@ -40,7 +43,7 @@ internal class TcpProxy : IProxy
 
                 foreach (var tcpConnection in tempConnections)
                 {
-                    if (tcpConnection.LastActivity + ConnectionTimeout < Environment.TickCount64)
+                    if (tcpConnection.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
                     {
                         tcpConnection.Stop();
                     }
@@ -50,13 +53,13 @@ internal class TcpProxy : IProxy
                     }
                 }
             }
-        });
+        }, ct);
 
         while (true)
         {
             try
             {
-                var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress).ConfigureAwait(false);
+                var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress, ct).ConfigureAwait(false);
 
                 var tcpConnection = await TcpConnection.AcceptTcpClientAsync(localServer,
                         new IPEndPoint(ips[0], remoteServerPort))

@@ -1,8 +1,14 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace NetProxy;
 
-internal interface IProxy
+public interface IProxy
 {
-    Task Start(string remoteServerHostNameOrAddress, ushort remoteServerPort, ushort localPort, string? localIp = null);
+    Task Start(
+        string remoteServerHostNameOrAddress,
+        ushort remoteServerPort,
+        ushort localPort,
+        string? localIp,
+        CancellationToken ct);
 }

@@ -3,23 +3,21 @@ using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NetProxy;
 
 internal class UdpProxy : IProxy
 {
-    /// <summary>
-    /// Milliseconds
-    /// </summary>
-    public int ConnectionTimeout { get; set; } = (4 * 60 * 1000);
+    const int ConnectionTimeoutMilliseconds = 4 * 60 * 1000;
 
-    public async Task Start(string remoteServerHostNameOrAddress, ushort remoteServerPort, ushort localPort, string? localIp = null)
+    public async Task Start(string remoteServerHostNameOrAddress, ushort remoteServerPort, ushort localPort, string? localIp, CancellationToken ct)
     {
         var connections = new ConcurrentDictionary<IPEndPoint, UdpConnection>();
 
-        // TCP will lookup every time while this is only once.
-        var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress).ConfigureAwait(false);
+        // TCP will look up every time while this is only once.
+        var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress, ct).ConfigureAwait(false);
         var remoteServerEndPoint = new IPEndPoint(ips[0], remoteServerPort);
 
         var localServer = new UdpClient(AddressFamily.InterNetworkV6);
@@ -31,25 +29,25 @@ internal class UdpProxy : IProxy
 
         var _ = Task.Run(async () =>
         {
-            while (true)
+            while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
                 foreach (var connection in connections.ToArray())
                 {
-                    if (connection.Value.LastActivity + ConnectionTimeout < Environment.TickCount64)
+                    if (connection.Value.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
                     {
                         connections.TryRemove(connection.Key, out UdpConnection? c);
                         connection.Value.Stop();
                     }
                 }
             }
-        });
+        }, ct);
 
-        while (true)
+        while (!ct.IsCancellationRequested)
         {
             try
             {
-                var message = await localServer.ReceiveAsync().ConfigureAwait(false);
+                var message = await localServer.ReceiveAsync(ct).ConfigureAwait(false);
                 var sourceEndPoint = message.RemoteEndPoint;
                 var client = connections.GetOrAdd(sourceEndPoint,
                     ep =>
@@ -58,6 +56,7 @@ internal class UdpProxy : IProxy
                         udpConnection.Run();
                         return udpConnection;
                     });
+
                 await client.SendToServerAsync(message.Buffer).ConfigureAwait(false);
             }
             catch (Exception ex)

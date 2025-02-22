@@ -8,17 +8,18 @@ using System.Threading.Tasks;
 
 namespace NetProxy;
 
-internal class TcpConnection
+public class TcpConnection
 {
     readonly TcpClient _localServerConnection;
-    readonly EndPoint? _sourceEndpoint;
     readonly IPEndPoint _remoteEndpoint;
     readonly TcpClient _forwardClient;
-    readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-    readonly EndPoint? _serverLocalEndpoint;
+    readonly CancellationTokenSource _cancellationTokenSource = new();
+    readonly string _description;
+
     EndPoint? _forwardLocalEndpoint;
     long _totalBytesForwarded;
     long _totalBytesResponded;
+
     public long LastActivity { get; private set; } = Environment.TickCount64;
 
     public static async Task<TcpConnection> AcceptTcpClientAsync(TcpListener tcpListener, IPEndPoint remoteEndpoint)
@@ -32,17 +33,14 @@ internal class TcpConnection
     {
         _localServerConnection = localServerConnection;
         _remoteEndpoint = remoteEndpoint;
+        var sourceEndpoint = _localServerConnection.Client.RemoteEndPoint;
+        var serverLocalEndpoint = _localServerConnection.Client.LocalEndPoint;
 
-        _forwardClient = new TcpClient {NoDelay = true};
-
-        _sourceEndpoint = _localServerConnection.Client.RemoteEndPoint;
-        _serverLocalEndpoint = _localServerConnection.Client.LocalEndPoint;
+        _forwardClient = new TcpClient { NoDelay = true };
+        _description = $"{sourceEndpoint} => {serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}";
     }
 
-    public void Run()
-    {
-        RunInternal(_cancellationTokenSource.Token);
-    }
+    public void Run() => RunInternal(_cancellationTokenSource.Token);
 
     public void Stop()
     {
@@ -68,15 +66,15 @@ internal class TcpConnection
                     await _forwardClient.ConnectAsync(_remoteEndpoint.Address, _remoteEndpoint.Port, cancellationToken).ConfigureAwait(false);
                     _forwardLocalEndpoint = _forwardClient.Client.LocalEndPoint;
 
-                    Console.WriteLine($"Established TCP {_sourceEndpoint} => {_serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}");
+                    Console.WriteLine($"Established TCP {_description}");
 
-                    using (var serverStream = _forwardClient.GetStream())
-                    using (var clientStream = _localServerConnection.GetStream())
-                    using (cancellationToken.Register(() =>
-                           {
-                               serverStream.Close();
-                               clientStream.Close();
-                           }, true))
+                    await using (var serverStream = _forwardClient.GetStream())
+                    await using (var clientStream = _localServerConnection.GetStream())
+                    await using (cancellationToken.Register(() =>
+                                 {
+                                     serverStream.Close();
+                                     clientStream.Close();
+                                 }, true))
                     {
                         await Task.WhenAny(
                             CopyToAsync(clientStream, serverStream, 81920, Direction.Forward, cancellationToken),
@@ -91,12 +89,17 @@ internal class TcpConnection
             }
             finally
             {
-                Console.WriteLine($"Closed TCP {_sourceEndpoint} => {_serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
+                Console.WriteLine($"Closed TCP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
             }
-        });
+        }, cancellationToken);
     }
 
-    async Task CopyToAsync(Stream source, Stream destination, int bufferSize = 81920, Direction direction = Direction.Unknown, CancellationToken cancellationToken = default)
+    async Task CopyToAsync(
+        Stream source,
+        Stream destination,
+        int bufferSize = 81920,
+        Direction direction = Direction.Unknown,
+        CancellationToken cancellationToken = default)
     {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         try
@@ -104,7 +107,9 @@ internal class TcpConnection
             while (true)
             {
                 int bytesRead = await source.ReadAsync(new Memory<byte>(buffer), cancellationToken).ConfigureAwait(false);
-                if (bytesRead == 0) break;
+                if (bytesRead == 0)
+                    break;
+
                 LastActivity = Environment.TickCount64;
                 await destination.WriteAsync(new ReadOnlyMemory<byte>(buffer, 0, bytesRead), cancellationToken).ConfigureAwait(false);
 

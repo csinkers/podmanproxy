@@ -8,22 +8,24 @@ namespace NetProxy;
 
 internal class UdpConnection
 {
+    readonly TaskCompletionSource<bool> _forwardConnectionBindCompleted = new();
     readonly UdpClient _localServer;
     readonly UdpClient _forwardClient;
-    public long LastActivity { get; private set; } = Environment.TickCount64;
     readonly IPEndPoint _sourceEndpoint;
     readonly IPEndPoint _remoteEndpoint;
-    readonly EndPoint? _serverLocalEndpoint;
+    readonly string _description;
+
     EndPoint? _forwardLocalEndpoint;
     bool _isRunning;
     long _totalBytesForwarded;
     long _totalBytesResponded;
-    readonly TaskCompletionSource<bool> _forwardConnectionBindCompleted = new TaskCompletionSource<bool>();
+
+    public long LastActivity { get; private set; } = Environment.TickCount64;
 
     public UdpConnection(UdpClient localServer, IPEndPoint sourceEndpoint, IPEndPoint remoteEndpoint)
     {
         _localServer = localServer;
-        _serverLocalEndpoint = _localServer.Client.LocalEndPoint;
+        var serverLocalEndpoint = _localServer.Client.LocalEndPoint;
 
         _isRunning = true;
         _remoteEndpoint = remoteEndpoint;
@@ -31,7 +33,10 @@ internal class UdpConnection
 
         _forwardClient = new UdpClient(AddressFamily.InterNetworkV6);
         _forwardClient.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
+        _description = $"{_sourceEndpoint} => {serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}";
     }
+
+    public override string ToString() => _description;
 
     public async Task SendToServerAsync(byte[] message)
     {
@@ -51,7 +56,7 @@ internal class UdpConnection
                 _forwardClient.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
                 _forwardLocalEndpoint = _forwardClient.Client.LocalEndPoint;
                 _forwardConnectionBindCompleted.SetResult(true);
-                Console.WriteLine($"Established UDP {_sourceEndpoint} => {_serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}");
+                Console.WriteLine($"Established UDP {_description}");
 
                 while (_isRunning)
                 {
@@ -78,7 +83,7 @@ internal class UdpConnection
     {
         try
         {
-            Console.WriteLine($"Closed UDP {_sourceEndpoint} => {_serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
+            Console.WriteLine($"Closed UDP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
             _isRunning = false;
             _forwardClient.Close();
         }
