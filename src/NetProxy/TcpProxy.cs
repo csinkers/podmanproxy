@@ -20,9 +20,8 @@ public static class TcpProxy
     {
         var connections = new ConcurrentBag<TcpConnection>();
 
-        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.IPv6Any : IPAddress.Parse(config.LocalIp);
+        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.Any : IPAddress.Parse(config.LocalIp);
         var localServer = new TcpListener(new IPEndPoint(localIpAddress, config.LocalPort));
-        localServer.Server.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
         localServer.Start();
 
         log.LogInformation($"TCP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
@@ -55,14 +54,11 @@ public static class TcpProxy
         {
             try
             {
-                var ips = await Dns.GetHostAddressesAsync(config.ForwardIp, ct).ConfigureAwait(false);
+                var ip = IPAddress.Parse(config.ForwardIp);
+                var endpoint = new IPEndPoint(ip, config.ForwardPort);
 
                 var tcpConnection =
-                    await TcpConnection.AcceptTcpClientAsync(
-                        log,
-                        localServer,
-                        new IPEndPoint(ips[0], config.ForwardPort)
-                    )
+                    await TcpConnection.AcceptTcpClientAsync(log, localServer, endpoint)
                     .ConfigureAwait(false);
 
                 tcpConnection.Run();

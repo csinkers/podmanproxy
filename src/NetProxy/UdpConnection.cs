@@ -33,8 +33,7 @@ internal class UdpConnection
         _remoteEndpoint = remoteEndpoint;
         _sourceEndpoint = sourceEndpoint;
 
-        _forwardClient = new UdpClient(AddressFamily.InterNetworkV6);
-        _forwardClient.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
+        _forwardClient = new UdpClient(AddressFamily.InterNetwork);
         _description = $"{_sourceEndpoint} => {serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}";
     }
 

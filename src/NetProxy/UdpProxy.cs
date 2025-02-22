@@ -19,13 +19,11 @@ internal static class UdpProxy
     {
         var connections = new ConcurrentDictionary<IPEndPoint, UdpConnection>();
 
-        // TCP will look up every time while this is only once.
-        var ips = await Dns.GetHostAddressesAsync(config.ForwardIp, ct).ConfigureAwait(false);
-        var remoteServerEndPoint = new IPEndPoint(ips[0], config.ForwardPort);
+        var ip = IPAddress.Parse(config.ForwardIp);
+        var remoteServerEndPoint = new IPEndPoint(ip, config.ForwardPort);
 
-        var localServer = new UdpClient(AddressFamily.InterNetworkV6);
-        localServer.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
-        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.IPv6Any : IPAddress.Parse(config.LocalIp);
+        var localServer = new UdpClient(AddressFamily.InterNetwork);
+        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.Any: IPAddress.Parse(config.LocalIp);
         localServer.Client.Bind(new IPEndPoint(localIpAddress, config.LocalPort));
 
         log.LogInformation($"UDP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
