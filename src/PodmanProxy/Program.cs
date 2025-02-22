@@ -1,13 +1,10 @@
-﻿using System.Net;
-using System.Reflection;
+﻿using System.Reflection;
 using Microsoft.Extensions.Logging;
 
 namespace PodmanProxy;
 
 internal static class Program
 {
-    const string Remote = "172.28.27.207"; // TODO: Detect via listening for broadcast packets
-
     public static int Main(string[] args)
     {
         var log = new ConsoleLogger();
@@ -17,18 +14,7 @@ internal static class Program
         try
         {
             var cts = new CancellationTokenSource();
-            if (!File.Exists(args[0]))
-                throw new FileNotFoundException("Could not find config file", args[0]);
-
-            var configJson = System.IO.File.ReadAllText(args[0]);
-            Config? config = Config.Parse(configJson);
-            if (config == null)
-                throw new FormatException("Config could not be parsed");
-
-            config = config.WithRemote(IPAddress.Parse(Remote));
-
-            var proxyConfigs = config.ParseProxyConfigs(log);
-            var tasks = proxyConfigs.Select(c => ProxyFromConfig(log, c, cts.Token)).ToList();
+            Task task = ProxyServer.Run(args[0], log, cts.Token);
 
             Console.WriteLine("Press q to exit, > to increase log verbosity, < to decrease");
             bool done = false;
@@ -61,7 +47,7 @@ internal static class Program
             }
 
             cts.Cancel();
-            Task.WhenAll(tasks).Wait(CancellationToken.None);
+            task.Wait(CancellationToken.None);
 
             return 0;
         }
@@ -69,24 +55,6 @@ internal static class Program
         {
             log.LogError($"An error occurred : {ex}");
             return 1;
-        }
-    }
-
-    static Task ProxyFromConfig(ConsoleLogger log, ProxyConfig proxyConfig, CancellationToken ct)
-    {
-        try
-        {
-            return proxyConfig.Protocol switch
-            {
-                Protocol.Udp => UdpProxy.Start(log, proxyConfig, ct),
-                Protocol.Tcp => TcpProxy.Start(log, proxyConfig, ct),
-                _ => throw new InvalidOperationException($"Protocol not supported {proxyConfig.Protocol}")
-            };
-        }
-        catch (Exception ex)
-        {
-            log.LogError($"Failed to start proxy : {ex.Message}");
-            throw;
         }
     }
 
