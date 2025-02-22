@@ -30,23 +30,27 @@ public static class TcpProxy
         {
             while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
-
-                var tempConnections = new List<TcpConnection>(connections.Count);
-                while (connections.TryTake(out var connection))
-                    tempConnections.Add(connection);
-
-                foreach (var tcpConnection in tempConnections)
+                try
                 {
-                    if (tcpConnection.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
+                    await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+
+                    var tempConnections = new List<TcpConnection>(connections.Count);
+                    while (connections.TryTake(out var connection))
+                        tempConnections.Add(connection);
+
+                    foreach (var tcpConnection in tempConnections)
                     {
-                        tcpConnection.Stop();
-                    }
-                    else
-                    {
-                        connections.Add(tcpConnection);
+                        if (tcpConnection.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
+                        {
+                            tcpConnection.Stop();
+                        }
+                        else
+                        {
+                            connections.Add(tcpConnection);
+                        }
                     }
                 }
+                catch (OperationCanceledException) { /* Expected during shutdown */ }
             }
         }, ct);
 
@@ -57,13 +61,12 @@ public static class TcpProxy
                 var ip = IPAddress.Parse(config.ForwardIp);
                 var endpoint = new IPEndPoint(ip, config.ForwardPort);
 
-                var tcpConnection =
-                    await TcpConnection.AcceptTcpClientAsync(log, localServer, endpoint)
-                    .ConfigureAwait(false);
+                var tcpConnection = await TcpConnection.AcceptTcpClientAsync(log, localServer, endpoint, ct).ConfigureAwait(false);
 
                 tcpConnection.Run();
                 connections.Add(tcpConnection);
             }
+            catch (OperationCanceledException) { /* Expected during shutdown */ }
             catch (Exception ex)
             {
                 log.LogError(ex.ToString());

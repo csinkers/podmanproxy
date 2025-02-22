@@ -27,7 +27,7 @@ internal static class Program
                 config.Proxies[i] = config.Proxies[i].Replace("$remote", Remote);
 
             var proxyConfigs = config.ParseProxyConfigs(log);
-            var tasks = proxyConfigs.Select(c => ProxyFromConfig(log, c, cts.Token));
+            var tasks = proxyConfigs.Select(c => ProxyFromConfig(log, c, cts.Token)).ToList();
 
             while (Console.ReadKey().KeyChar != 'q')
             {

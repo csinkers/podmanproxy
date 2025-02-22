@@ -40,19 +40,20 @@ public class Config
                 continue;
             }
 
-            var localIp = m.Groups[2].Value;
             if (!ushort.TryParse(m.Groups[3].Value, out var localPort))
             {
                 log.LogError($"Could not parse port \"{m.Groups[3].Value}\"");
                 continue;
             }
 
-            var remoteIp = m.Groups[4].Value;
             if (!ushort.TryParse(m.Groups[5].Value, out var remotePort))
             {
                 log.LogError($"Could not parse port \"{m.Groups[5].Value}\"");
                 continue;
             }
+
+            var localIp = m.Groups[2].Value.Trim();
+            var remoteIp = m.Groups[4].Value.Trim();
 
             results.Add(new ProxyConfig(protocol, localIp, localPort, remoteIp, remotePort));
         }

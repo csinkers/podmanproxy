@@ -29,9 +29,8 @@ internal class UdpConnection
         _log = log;
         _localServer = localServer;
         var serverLocalEndpoint = _localServer.Client.LocalEndPoint;
-
-        _remoteEndpoint = remoteEndpoint;
         _sourceEndpoint = sourceEndpoint;
+        _remoteEndpoint = remoteEndpoint;
 
         _forwardClient = new UdpClient(AddressFamily.InterNetwork);
         _description = $"{_sourceEndpoint} => {serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}";
@@ -68,6 +67,7 @@ internal class UdpConnection
                         var sent = await _localServer.SendAsync(result.Buffer, result.Buffer.Length, _sourceEndpoint).ConfigureAwait(false);
                         Interlocked.Add(ref _totalBytesResponded, sent);
                     }
+                    catch (OperationCanceledException) { /* Expected during shutdown */ }
                     catch (Exception ex)
                     {
                         if (_isRunning)

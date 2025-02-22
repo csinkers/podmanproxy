@@ -28,19 +28,24 @@ internal static class UdpProxy
 
         log.LogInformation($"UDP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
 
-        _ = Task.Run(async () =>
+        _ = Task.Run(async () => // Cleanup task
         {
             while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
-                foreach (var connection in connections.ToArray())
+                try
                 {
-                    if (connection.Value.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
+                    await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+                    foreach (var connection in connections.ToArray())
                     {
-                        connections.TryRemove(connection.Key, out UdpConnection? c);
-                        connection.Value.Stop();
+                        if (connection.Value.LastActivity + ConnectionTimeoutMilliseconds < Environment.TickCount64)
+                        {
+                            log.LogDebug($"Cleaning up idle UDP connection {connection.Key}");
+                            connections.TryRemove(connection.Key, out _);
+                            connection.Value.Stop();
+                        }
                     }
                 }
+                catch (OperationCanceledException) { /* Expected during shutdown */ }
             }
         }, ct);
 
@@ -53,16 +58,17 @@ internal static class UdpProxy
                 var client = connections.GetOrAdd(sourceEndPoint,
                     ep =>
                     {
-                        var udpConnection = new UdpConnection(log, localServer, sourceEndPoint, remoteServerEndPoint);
+                        var udpConnection = new UdpConnection(log, localServer, ep, remoteServerEndPoint);
                         udpConnection.Run();
                         return udpConnection;
                     });
 
                 await client.SendToServerAsync(message.Buffer).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) { /* Expected during shutdown */ }
             catch (Exception ex)
             {
-                log.LogError($"An exception occurred on receiving a client datagram: {ex}");
+                log.LogWarning($"An exception occurred on receiving a client datagram: {ex}");
             }
         }
     }
