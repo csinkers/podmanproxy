@@ -17,6 +17,12 @@ public class Worker(IConfiguration configuration, ILogger<Worker> logger) : Back
                 Environment.Exit(2);
             }
 
+            if (!Path.IsPathRooted(configPath))
+            {
+                logger.LogError("ConfigPath parameter must specify an absolute path");
+                Environment.Exit(2);
+            }
+
             await ProxyServer.Run(configPath, logger, ct);
         }
         catch (AggregateException ex)

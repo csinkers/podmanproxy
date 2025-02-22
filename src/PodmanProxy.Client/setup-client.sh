@@ -14,10 +14,12 @@ then
 	exit 1
 fi
 
+systemctl stop podmanproxy-client.service
+
 dotnet publish
 
-cp build/PodmanProxy.Client/bin/Release/net8.0/linux-x64/publish/PodmanProxy.Client /usr/sbin/podmanproxy-client
-cp src/PodmanProxy.Client/podmanproxy-client.service /etc/systemd/system/podmanproxy-client.service
+cp ../../build/PodmanProxy.Client/bin/Release/net8.0/linux-x64/publish/PodmanProxy.Client /usr/sbin/podmanproxy-client
+cp podmanproxy-client.service /etc/systemd/system/podmanproxy-client.service
 
 systemctl daemon-reload
 systemctl start podmanproxy-client.service

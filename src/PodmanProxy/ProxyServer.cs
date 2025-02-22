@@ -16,7 +16,8 @@ public static class ProxyServer
         var manager = new ProxyManager();
         var managerTask = manager.Run(log, ct);
 
-        FileSystemWatcher watcher = new FileSystemWatcher(Path.GetDirectoryName(configPath) ?? throw new InvalidOperationException(), Path.GetFileName(configPath));
+        var configDir = Path.GetDirectoryName(configPath) ?? throw new InvalidOperationException();
+        var watcher = new FileSystemWatcher(configDir, Path.GetFileName(configPath));
         watcher.IncludeSubdirectories = false;
         watcher.EnableRaisingEvents = true;
         watcher.Changed += (_, _) =>

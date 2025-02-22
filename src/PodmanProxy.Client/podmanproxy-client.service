@@ -1,9 +1,11 @@
 [Unit]
-Description=podmanproxy-client
+Description=Podman Proxy Client
 
 [Service]
-Type=notify
+WorkingDirectory=/usr/sbin
 ExecStart=/usr/sbin/podmanproxy-client
+SyslogIdentifier=podmanproxy-client
+User=user
 
 [Install]
 WantedBy=multi-user.target

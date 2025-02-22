@@ -10,8 +10,7 @@ podman only seems to allow forwarding TCP ports (and only to the 127.0.0.1
 adaptor at that). Under Win11, the WSL2 networking is more flexible and allows
 mirroring the adaptors of the host machine so a proxy isn't required.
 
-The proxy server (NetProxy.Cli for ad-hoc use or NetProxy.Worker if running as
-a service) will wait in an idle state until they receive a packet from the
+The proxy server will wait in an idle state until it receives a packet from the
 client on the control port (9188 by default). The NetProxy.Client process should
 be run on the WSL2 machine in order to advertise its address. It simply
 broadcasts a 1-byte UDP packet on the control port every 5 seconds so the server
@@ -21,4 +20,9 @@ Once the client address is discovered, the server will start listening on the
 configured ports and forwarding traffic to the client machine. Any updates to
 the config file, or a message from a new address on the control port (e.g. after
 a WSL2 restart) will cause the proxy to reconfigure itself.
+
+# Requirements:
+- dotnet 8.0
+- podman >= 5.4.0
+- podman-desktop >= 1.16.2
 
