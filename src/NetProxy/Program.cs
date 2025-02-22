@@ -42,34 +42,16 @@ internal static class Program
         }
     }
 
-    static Task ProxyFromConfig(
-        ConsoleLogger log,
-        ProxyConfig proxyConfig,
-        CancellationToken ct)
+    static Task ProxyFromConfig(ConsoleLogger log, ProxyConfig proxyConfig, CancellationToken ct)
     {
-        var forwardPort = proxyConfig.ForwardPort;
-        var localPort = proxyConfig.LocalPort;
-        var forwardIp = proxyConfig.ForwardIp;
-        var localIp = proxyConfig.LocalIp;
-        var protocol = proxyConfig.Protocol;
-
         try
         {
-            switch (protocol)
+            return proxyConfig.Protocol switch
             {
-                case Protocol.Udp:
-                    {
-                        var proxy = new UdpProxy();
-                        return proxy.Start(log, forwardIp, forwardPort, localPort, localIp, ct);
-                    }
-                case Protocol.Tcp:
-                    {
-                        var proxy = new TcpProxy();
-                        return proxy.Start(log, forwardIp, forwardPort, localPort, localIp, ct);
-                    }
-                default:
-                    throw new InvalidOperationException($"Protocol not supported {protocol}");
-            }
+                Protocol.Udp => UdpProxy.Start(log, proxyConfig, ct),
+                Protocol.Tcp => TcpProxy.Start(log, proxyConfig, ct),
+                _ => throw new InvalidOperationException($"Protocol not supported {proxyConfig.Protocol}")
+            };
         }
         catch (Exception ex)
         {

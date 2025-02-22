@@ -9,26 +9,23 @@ using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
-public class TcpProxy : IProxy
+public static class TcpProxy
 {
     const int ConnectionTimeoutMilliseconds = 4 * 60 * 1000;
 
-    public async Task Start(
+    public static async Task Start(
         ILogger log,
-        string remoteServerHostNameOrAddress,
-        ushort remoteServerPort,
-        ushort localPort,
-        string? localIp,
+        ProxyConfig config,
         CancellationToken ct)
     {
         var connections = new ConcurrentBag<TcpConnection>();
 
-        IPAddress localIpAddress = string.IsNullOrEmpty(localIp) ? IPAddress.IPv6Any : IPAddress.Parse(localIp);
-        var localServer = new TcpListener(new IPEndPoint(localIpAddress, localPort));
+        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.IPv6Any : IPAddress.Parse(config.LocalIp);
+        var localServer = new TcpListener(new IPEndPoint(localIpAddress, config.LocalPort));
         localServer.Server.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
         localServer.Start();
 
-        log.LogInformation($"TCP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
+        log.LogInformation($"TCP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
 
         _ = Task.Run(async () =>
         {
@@ -58,13 +55,13 @@ public class TcpProxy : IProxy
         {
             try
             {
-                var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress, ct).ConfigureAwait(false);
+                var ips = await Dns.GetHostAddressesAsync(config.ForwardIp, ct).ConfigureAwait(false);
 
                 var tcpConnection =
                     await TcpConnection.AcceptTcpClientAsync(
                         log,
                         localServer,
-                        new IPEndPoint(ips[0], remoteServerPort)
+                        new IPEndPoint(ips[0], config.ForwardPort)
                     )
                     .ConfigureAwait(false);
 

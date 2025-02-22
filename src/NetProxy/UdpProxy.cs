@@ -8,30 +8,27 @@ using Microsoft.Extensions.Logging;
 
 namespace NetProxy;
 
-internal class UdpProxy : IProxy
+internal static class UdpProxy
 {
     const int ConnectionTimeoutMilliseconds = 4 * 60 * 1000;
 
-    public async Task Start(
+    public static async Task Start(
         ILogger log,
-        string remoteServerHostNameOrAddress,
-        ushort remoteServerPort,
-        ushort localPort,
-        string? localIp,
+        ProxyConfig config,
         CancellationToken ct)
     {
         var connections = new ConcurrentDictionary<IPEndPoint, UdpConnection>();
 
         // TCP will look up every time while this is only once.
-        var ips = await Dns.GetHostAddressesAsync(remoteServerHostNameOrAddress, ct).ConfigureAwait(false);
-        var remoteServerEndPoint = new IPEndPoint(ips[0], remoteServerPort);
+        var ips = await Dns.GetHostAddressesAsync(config.ForwardIp, ct).ConfigureAwait(false);
+        var remoteServerEndPoint = new IPEndPoint(ips[0], config.ForwardPort);
 
         var localServer = new UdpClient(AddressFamily.InterNetworkV6);
         localServer.Client.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, false);
-        IPAddress localIpAddress = string.IsNullOrEmpty(localIp) ? IPAddress.IPv6Any : IPAddress.Parse(localIp);
-        localServer.Client.Bind(new IPEndPoint(localIpAddress, localPort));
+        IPAddress localIpAddress = string.IsNullOrEmpty(config.LocalIp) ? IPAddress.IPv6Any : IPAddress.Parse(config.LocalIp);
+        localServer.Client.Bind(new IPEndPoint(localIpAddress, config.LocalPort));
 
-        log.LogInformation($"UDP proxy started [{localIpAddress}]:{localPort} -> [{remoteServerHostNameOrAddress}]:{remoteServerPort}");
+        log.LogInformation($"UDP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
 
         _ = Task.Run(async () =>
         {
