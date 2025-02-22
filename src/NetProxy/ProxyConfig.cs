@@ -1,3 +1,6 @@
 ﻿namespace NetProxy;
 
-public record ProxyConfig(Protocol Protocol, string LocalIp, ushort LocalPort, string ForwardIp, ushort ForwardPort);
+public record ProxyConfig(string Config, Protocol Protocol, string LocalIp, ushort LocalPort, string ForwardIp, ushort ForwardPort)
+{
+    public override string ToString() => Config;
+}

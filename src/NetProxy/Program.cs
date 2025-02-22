@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 
@@ -23,8 +24,7 @@ internal static class Program
             if (config == null)
                 throw new FormatException("Config could not be parsed");
 
-            for (var i = 0; i < config.Proxies.Count; i++)
-                config.Proxies[i] = config.Proxies[i].Replace("$remote", Remote);
+            config = config.WithRemote(IPAddress.Parse(Remote));
 
             var proxyConfigs = config.ParseProxyConfigs(log);
             var tasks = proxyConfigs.Select(c => ProxyFromConfig(log, c, cts.Token)).ToList();
