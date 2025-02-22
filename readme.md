@@ -1,7 +1,9 @@
 NetProxy
 ========
 
-Netproxy is a simple ipv6/ipv4 UDP & TCP proxy based on .NET 5.0.
+This originated as a fork of https://github.com/Stormancer/netproxy
+
+NetProxy is a simple ipv6/ipv4 UDP & TCP proxy based on .NET 8.0.
 Tested on *win10-x64* and *ubuntu.16.20-x64*.
 
 Why? 

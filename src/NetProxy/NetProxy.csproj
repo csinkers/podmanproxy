@@ -4,7 +4,6 @@
     <OutputType>Exe</OutputType>
     <PackAsTool>true</PackAsTool>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <RootNamespace>NetProxy</RootNamespace>
     <ToolCommandName>netproxy</ToolCommandName>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
