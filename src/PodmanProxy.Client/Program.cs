@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace PodmanProxy.Client;
 
@@ -16,6 +17,7 @@ internal static class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
         builder.Configuration.AddCommandLine(args);
+        builder.Logging.AddConsole();
         builder.Services.AddSystemd();
         builder.Services.AddHostedService<ClientWorker>();
 
