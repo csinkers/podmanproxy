@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -23,12 +20,16 @@ public class Config
         JsonSerializer.Deserialize<Config>(json, Options)
         ?? throw new FormatException("Config could not be parsed");
 
+    [JsonPropertyName("control_port")]
+    public ushort ControlPort { get; set; } = 9188;
+
     [JsonPropertyName("proxies")]
     public List<string> Proxies { get; set; } = new();
 
     public Config WithRemote(IPAddress address) =>
         new()
         {
+            ControlPort = ControlPort,
             Proxies =
                 Proxies
                 .Select(p => p.Replace("$remote", address.ToString()))

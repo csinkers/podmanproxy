@@ -1,10 +1,6 @@
-﻿using System;
-using System.Buffers;
-using System.IO;
+﻿using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace PodmanProxy;
