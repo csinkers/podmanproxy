@@ -8,4 +8,5 @@
 *.sln.docstates
 .vs/
 /build
+launchSettings.json
 
