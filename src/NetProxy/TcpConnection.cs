@@ -57,6 +57,8 @@ public class TcpConnection
         }
     }
 
+    public override string ToString() => _description;
+
     void RunInternal(CancellationToken cancellationToken)
     {
         Task.Run(async () =>
@@ -69,7 +71,7 @@ public class TcpConnection
                     await _forwardClient.ConnectAsync(_remoteEndpoint.Address, _remoteEndpoint.Port, cancellationToken).ConfigureAwait(false);
                     _forwardLocalEndpoint = _forwardClient.Client.LocalEndPoint;
 
-                    _log.LogInformation($"Established TCP {_description}");
+                    _log.LogDebug($"Established TCP {_description}");
 
                     await using (var serverStream = _forwardClient.GetStream())
                     await using (var clientStream = _localServerConnection.GetStream())
@@ -88,11 +90,11 @@ public class TcpConnection
             }
             catch (Exception ex)
             {
-                _log.LogError($"An exception occurred during TCP stream : {ex}");
+                _log.LogWarning($"An exception occurred during TCP stream : {ex}");
             }
             finally
             {
-                _log.LogInformation($"Closed TCP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
+                _log.LogDebug($"Closed TCP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
             }
         }, cancellationToken);
     }
@@ -102,19 +104,19 @@ public class TcpConnection
         Stream destination,
         int bufferSize = 81920,
         Direction direction = Direction.Unknown,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
         try
         {
-            while (true)
+            while (!ct.IsCancellationRequested)
             {
-                int bytesRead = await source.ReadAsync(new Memory<byte>(buffer), cancellationToken).ConfigureAwait(false);
+                int bytesRead = await source.ReadAsync(new Memory<byte>(buffer), ct).ConfigureAwait(false);
                 if (bytesRead == 0)
                     break;
 
                 LastActivity = Environment.TickCount64;
-                await destination.WriteAsync(new ReadOnlyMemory<byte>(buffer, 0, bytesRead), cancellationToken).ConfigureAwait(false);
+                await destination.WriteAsync(new ReadOnlyMemory<byte>(buffer, 0, bytesRead), ct).ConfigureAwait(false);
 
                 switch (direction)
                 {

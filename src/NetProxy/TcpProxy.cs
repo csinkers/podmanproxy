@@ -38,9 +38,7 @@ public class TcpProxy : IProxy
 
                 var tempConnections = new List<TcpConnection>(connections.Count);
                 while (connections.TryTake(out var connection))
-                {
                     tempConnections.Add(connection);
-                }
 
                 foreach (var tcpConnection in tempConnections)
                 {
@@ -56,7 +54,7 @@ public class TcpProxy : IProxy
             }
         }, ct);
 
-        while (true)
+        while (!ct.IsCancellationRequested)
         {
             try
             {
