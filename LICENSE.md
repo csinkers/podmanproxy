@@ -1,6 +1,7 @@
 MIT License
 
-Copyright (c) 2021 Stormancer
+Copyright (c) 2025 Cam Sinclair (general improvements / podman specific changes)
+Copyright (c) 2021 Stormancer (original project that was forked)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
