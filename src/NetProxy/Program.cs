@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 
@@ -10,19 +8,27 @@ namespace NetProxy;
 
 internal static class Program
 {
+    const string Remote = "172.28.27.207"; // TODO: Detect via listening for broadcast packets
+
     static void Main(string[] args)
     {
         var log = new ConsoleLogger();
+        log.LogLevel = LogLevel.Debug;
         try
         {
             var cts = new CancellationTokenSource();
 
             var configJson = System.IO.File.ReadAllText("config.json");
-            Dictionary<string, ProxyConfig>? configs = JsonSerializer.Deserialize<Dictionary<string, ProxyConfig>>(configJson);
-            if (configs == null)
-                throw new Exception("configs is null");
+            Config? config = Config.Parse(configJson);
+            if (config == null)
+                throw new FormatException("Config could not be parsed");
 
-            var tasks = configs.SelectMany(c => ProxyFromConfig(log, c.Key, c.Value, cts.Token));
+            for (var i = 0; i < config.Proxies.Count; i++)
+                config.Proxies[i] = config.Proxies[i].Replace("$remote", Remote);
+
+            var proxyConfigs = config.ParseProxyConfigs(log);
+            var tasks = proxyConfigs.Select(c => ProxyFromConfig(log, c, cts.Token));
+
             while (Console.ReadKey().KeyChar != 'q')
             {
             }
@@ -36,9 +42,8 @@ internal static class Program
         }
     }
 
-    static IEnumerable<Task> ProxyFromConfig(
+    static Task ProxyFromConfig(
         ConsoleLogger log,
-        string proxyName,
         ProxyConfig proxyConfig,
         CancellationToken ct)
     {
@@ -50,62 +55,26 @@ internal static class Program
 
         try
         {
-            if (forwardIp == null)
-                throw new ArgumentException("forwardIp is null", nameof(proxyConfig));
-
-            if (!forwardPort.HasValue)
-                throw new ArgumentException("forwardPort is null", nameof(proxyConfig));
-
-            if (!localPort.HasValue)
-                throw new ArgumentException("localPort is null", nameof(proxyConfig));
-
-            if (protocol != "udp" && protocol != "tcp" && protocol != "any")
-                throw new ArgumentException($"protocol is not supported {protocol}", nameof(proxyConfig));
+            switch (protocol)
+            {
+                case Protocol.Udp:
+                    {
+                        var proxy = new UdpProxy();
+                        return proxy.Start(log, forwardIp, forwardPort, localPort, localIp, ct);
+                    }
+                case Protocol.Tcp:
+                    {
+                        var proxy = new TcpProxy();
+                        return proxy.Start(log, forwardIp, forwardPort, localPort, localIp, ct);
+                    }
+                default:
+                    throw new InvalidOperationException($"Protocol not supported {protocol}");
+            }
         }
         catch (Exception ex)
         {
-            log.LogError($"Failed to start {proxyName} : {ex.Message}");
+            log.LogError($"Failed to start proxy : {ex.Message}");
             throw;
         }
-
-        bool protocolHandled = false;
-        if (protocol is "udp" or "any")
-        {
-            protocolHandled = true;
-            Task task;
-            try
-            {
-                var proxy = new UdpProxy();
-                task = proxy.Start(log, forwardIp, forwardPort.Value, localPort.Value, localIp, ct);
-            }
-            catch (Exception ex)
-            {
-                log.LogError($"Failed to start {proxyName} : {ex.Message}");
-                throw;
-            }
-
-            yield return task;
-        }
-
-        if (protocol is "tcp" or "any")
-        {
-            protocolHandled = true;
-            Task task;
-            try
-            {
-                var proxy = new TcpProxy();
-                task = proxy.Start(log, forwardIp, forwardPort.Value, localPort.Value, localIp, ct);
-            }
-            catch (Exception ex)
-            {
-                log.LogError($"Failed to start {proxyName} : {ex.Message}");
-                throw;
-            }
-
-            yield return task;
-        }
-
-        if (!protocolHandled)
-            throw new InvalidOperationException($"Protocol not supported {protocol}");
     }
 }

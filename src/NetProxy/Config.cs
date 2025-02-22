@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+
+namespace NetProxy;
+
+public class Config
+{
+    static readonly Regex ProxyPattern = new(@"([a-z]+):\s+([0-9.]+):(\d+)\s*->([^:]+):(\d+)");
+    static readonly JsonSerializerOptions Options = new()
+    {
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip
+    };
+
+    public static Config? Parse(string configJson) => JsonSerializer.Deserialize<Config>(configJson, Options);
+
+    [JsonPropertyName("proxies")]
+    public List<string> Proxies { get; set; } = new();
+
+    public List<ProxyConfig> ParseProxyConfigs(ILogger log)
+    {
+        var results = new List<ProxyConfig>();
+
+        foreach (var s in Proxies)
+        {
+            var m = ProxyPattern.Match(s);
+            if (!m.Success)
+            {
+                log.LogError("Could not parse proxy config \"{s}\"", s);
+                continue;
+            }
+
+            if (!Enum.TryParse<Protocol>(m.Groups[1].Value, true, out var protocol))
+            {
+                log.LogError($"Could not parse protocol \"{m.Groups[1].Value}\"");
+                continue;
+            }
+
+            var localIp = m.Groups[2].Value;
+            if (!ushort.TryParse(m.Groups[3].Value, out var localPort))
+            {
+                log.LogError($"Could not parse port \"{m.Groups[3].Value}\"");
+                continue;
+            }
+
+            var remoteIp = m.Groups[4].Value;
+            if (!ushort.TryParse(m.Groups[5].Value, out var remotePort))
+            {
+                log.LogError($"Could not parse port \"{m.Groups[5].Value}\"");
+                continue;
+            }
+
+            results.Add(new ProxyConfig(protocol, localIp, localPort, remoteIp, remotePort));
+        }
+
+        return results;
+    }
+}

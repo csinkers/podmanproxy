@@ -1,32 +1,7 @@
 ﻿{
-  "testUdp": {
-    "localPort": 7777,
-    "protocol": "udp",
-    "forwardIp": "35.187.92.120",
-    "forwardPort": 7777
-  },
-  "http": {
-    "localPort": 80,
-    "protocol": "tcp",
-    "forwardIp": "149.56.107.33",
-    "forwardPort": 81
-  },
-  "https": {
-    "localPort": 8443,
-    "protocol": "any",
-    "forwardIp": "35.187.92.120",
-    "forwardPort": 443
-  },
-  "raknet1": {
-    "localPort": 30000,
-    "protocol": "udp",
-    "forwardIp": "35.187.92.120",
-    "forwardPort": 30000
-  },
-  "raknet2": {
-    "localPort": 30001,
-    "protocol": "udp",
-    "forwardIp": "35.187.92.120",
-    "forwardPort": 30001
-  }
+  "proxies": [
+    "udp: 192.168.153.1:53  -> $remote:53", // bind9
+    "tcp: 192.168.153.1:53  -> $remote:53", // bind9
+    "tcp: 192.168.153.1:953 -> $remote:953" // bind9
+  ]
 }
