@@ -1,9 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30804.86
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PodmanProxy", "src\PodmanProxy\PodmanProxy.csproj", "{B2120AF8-67E9-402A-A9D7-71573A873649}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CAF5E3B6-332D-4828-9437-063711B5B5AC}"
+	ProjectSection(SolutionItems) = preProject
+		config.json = config.json
+		LICENSE.md = LICENSE.md
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PodProxy.Client", "src\PodmanProxy.Client\PodProxy.Client.csproj", "{685741BC-350D-413E-BCD0-45A847B4AE1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +24,10 @@ Global
 		{B2120AF8-67E9-402A-A9D7-71573A873649}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B2120AF8-67E9-402A-A9D7-71573A873649}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B2120AF8-67E9-402A-A9D7-71573A873649}.Release|Any CPU.Build.0 = Release|Any CPU
+		{685741BC-350D-413E-BCD0-45A847B4AE1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{685741BC-350D-413E-BCD0-45A847B4AE1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{685741BC-350D-413E-BCD0-45A847B4AE1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{685741BC-350D-413E-BCD0-45A847B4AE1A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
