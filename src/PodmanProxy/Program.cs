@@ -1,82 +1,26 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace PodmanProxy;
 
 // Note: Install service via Setup.ps1
 internal static class Program
 {
+    const string ConfigFilename = "podmanproxy.json";
+
     public static async Task Main(string[] args)
     {
         var builder = Host.CreateApplicationBuilder(args);
-        builder.Configuration.AddCommandLine(args);
+        builder.Logging.AddSimpleConsole(x => x.SingleLine = true);
+        builder.Configuration.AddJsonFile(ConfigFilename, false, true);
+        builder.Services.Configure<PodmanProxyOptions>(builder.Configuration.GetSection("PodmanProxy"));
         builder.Services.AddWindowsService(options => { options.ServiceName = "PodmanProxy"; });
         builder.Services.AddHostedService<Worker>();
 
         var host = builder.Build();
-        await host.RunAsync();
+        var mainTask = host.RunAsync();
+        await mainTask;
     }
-
-    /* Old CLI implementation
-    public static int RunCli(string[] args)
-    {
-        var log = new ConsoleLogger();
-        if (args.Length != 1)
-            return PrintUsage();
-
-        try
-        {
-            var cts = new CancellationTokenSource();
-            Task task = ProxyServer.Run(args[0], log, cts.Token);
-
-            Console.WriteLine("Press q to exit, > to increase log verbosity, < to decrease");
-            bool done = false;
-            while (!done)
-            {
-                switch (Console.ReadKey().KeyChar)
-                {
-                    case 'q':
-                        done = true;
-                        break;
-
-                    case '>':
-                        if (log.LogLevel > LogLevel.Debug)
-                        {
-                            log.LogLevel--;
-                            Console.WriteLine($"Level: {log.LogLevel}");
-                        }
-
-                        break;
-
-                    case '<':
-                        if (log.LogLevel < LogLevel.Critical)
-                        {
-                            log.LogLevel++;
-                            Console.WriteLine($"Level: {log.LogLevel}");
-                        }
-
-                        break;
-                }
-            }
-
-            cts.Cancel();
-            task.Wait(CancellationToken.None);
-
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            log.LogError($"An error occurred : {ex}");
-            return 1;
-        }
-    }
-
-    static int PrintUsage()
-    {
-        var name = Assembly.GetExecutingAssembly().GetName().Name;
-        Console.WriteLine($"Usage: {name} configPath");
-        return 1;
-    }
-    */
 }

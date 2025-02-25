@@ -11,14 +11,15 @@ public class TcpConnection
     readonly TcpClient _localServerConnection;
     readonly IPEndPoint _remoteEndpoint;
     readonly TcpClient _forwardClient;
-    readonly string _description;
     readonly ILogger _log;
 
     EndPoint? _forwardLocalEndpoint;
     long _totalBytesForwarded;
     long _totalBytesResponded;
+    string? _description;
 
     public long LastActivityTickCount { get; private set; } = Environment.TickCount64;
+    public override string ToString() => _description ?? $"Inactive UDP connection for {_forwardLocalEndpoint} => {_remoteEndpoint}";
 
     public static async Task<TcpConnection> AcceptTcpClientAsync(
         ILogger log,
@@ -36,11 +37,8 @@ public class TcpConnection
         _log = log;
         _localServerConnection = localServerConnection;
         _remoteEndpoint = remoteEndpoint;
-        var sourceEndpoint = _localServerConnection.Client.RemoteEndPoint;
-        var serverLocalEndpoint = _localServerConnection.Client.LocalEndPoint;
 
         _forwardClient = new TcpClient { NoDelay = true };
-        _description = $"{sourceEndpoint} => {serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}";
     }
 
     public void Run()
@@ -55,16 +53,20 @@ public class TcpConnection
                 {
                     await _forwardClient.ConnectAsync(_remoteEndpoint.Address, _remoteEndpoint.Port, ct).ConfigureAwait(false);
                     _forwardLocalEndpoint = _forwardClient.Client.LocalEndPoint;
+                    var sourceEndpoint = _localServerConnection.Client.RemoteEndPoint;
+                    var serverLocalEndpoint = _localServerConnection.Client.LocalEndPoint;
+                    _description = $"{sourceEndpoint} => {serverLocalEndpoint} => {_forwardLocalEndpoint} => {_remoteEndpoint}";
 
-                    _log.LogDebug($"Established TCP {_description}");
+                    _log.LogDebug("Established TCP {description}", _description);
 
                     await using (var serverStream = _forwardClient.GetStream())
                     await using (var clientStream = _localServerConnection.GetStream())
-                    await using (ct.Register(() =>
-                                 {
-                                     serverStream.Close();
-                                     clientStream.Close();
-                                 }, true))
+                    await using (
+                        ct.Register(() =>
+                        {
+                            serverStream.Close();
+                            clientStream.Close();
+                        }, true))
                     {
                         await Task.WhenAny(
                             CopyToAsync(clientStream, serverStream, 81920, Direction.Forward, ct),
@@ -75,11 +77,15 @@ public class TcpConnection
             }
             catch (Exception ex)
             {
-                _log.LogWarning($"An exception occurred during TCP stream : {ex}");
+                _log.LogWarning("An exception occurred during TCP stream : {ex}", ex);
             }
             finally
             {
-                _log.LogDebug($"Closed TCP {_description}. {_totalBytesForwarded} bytes forwarded, {_totalBytesResponded} bytes responded.");
+                _log.LogDebug(
+                    "Closed TCP {description}. {totalBytesForwarded} bytes forwarded, {totalBytesResponded} bytes responded.",
+                    _description,
+                    _totalBytesForwarded,
+                    _totalBytesResponded);
             }
         }, ct);
     }
@@ -92,11 +98,10 @@ public class TcpConnection
         }
         catch (Exception ex)
         {
-            _log.LogError($"An exception occurred while closing TcpConnection : {ex}");
+            _log.LogError("An exception occurred while closing TcpConnection : {ex}", ex);
         }
     }
 
-    public override string ToString() => _description;
 
     async Task CopyToAsync(
         Stream source,

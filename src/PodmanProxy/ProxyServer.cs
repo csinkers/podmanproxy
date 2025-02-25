@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace PodmanProxy;
 
@@ -8,39 +9,32 @@ public static class ProxyServer
 {
     class Container { public IPAddress? CurrentRemote { get; set; } }
 
-    public static async Task Run(string configPath, ILogger log, CancellationToken ct)
+    public static async Task Run(IOptionsMonitor<PodmanProxyOptions> options, ILogger log, CancellationToken ct)
     {
         Container container = new();
-        var config = ParseConfig(configPath);
-
         var manager = new ProxyManager();
         var managerTask = manager.Run(log, ct);
 
-        var configDir = Path.GetDirectoryName(configPath) ?? throw new InvalidOperationException();
-        var watcher = new FileSystemWatcher(configDir, Path.GetFileName(configPath));
-        watcher.IncludeSubdirectories = false;
-        watcher.EnableRaisingEvents = true;
-        watcher.Changed += (_, _) =>
+        options.OnChange(newOptions =>
         {
             try
             {
-                config = ParseConfig(configPath);
                 if (container.CurrentRemote != null)
-                    manager.UpdateConfig(config.WithRemote(container.CurrentRemote));
+                    manager.UpdateConfig(newOptions, container.CurrentRemote);
             }
             catch (Exception ex)
             {
-                log.LogError($"An exception occurred on config file change: {ex}");
+                log.LogError("An exception occurred on config file change: {ex}", ex);
             }
-        };
+        });
 
         var ip = "";
-        var port = config.ControlPort;
+        var port = options.CurrentValue.ControlPort;
         IPAddress localIpAddress = string.IsNullOrEmpty(ip) ? IPAddress.Any : IPAddress.Parse(ip);
 
         var server = new UdpClient(AddressFamily.InterNetwork);
         server.Client.Bind(new IPEndPoint(localIpAddress, port));
-        log.LogInformation($"Listening on {localIpAddress}:{port}");
+        log.LogInformation("Listening on {ip}:{port}", localIpAddress, port);
 
         while (!ct.IsCancellationRequested)
         {
@@ -51,25 +45,15 @@ public static class ProxyServer
                     continue;
 
                 container.CurrentRemote = message.RemoteEndPoint.Address;
-                var updatedConfig = config.WithRemote(container.CurrentRemote);
-                manager.UpdateConfig(updatedConfig);
+                manager.UpdateConfig(options.CurrentValue, container.CurrentRemote);
             }
             catch (OperationCanceledException) { return; }
             catch (Exception ex)
             {
-                log.LogError($"An exception occurred on receiving a control datagram: {ex}");
+                log.LogError("An exception occurred on receiving a control datagram: {ex}", ex);
             }
         }
 
         await managerTask;
-    }
-
-    static Config ParseConfig(string path)
-    {
-        if (!File.Exists(path))
-            throw new FileNotFoundException("Invalid config path", path);
-
-        var configJson = File.ReadAllText(path);
-        return Config.Parse(configJson);
     }
 }

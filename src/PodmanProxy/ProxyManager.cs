@@ -1,13 +1,14 @@
-﻿using System.Threading.Channels;
+﻿using System.Net;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
 namespace PodmanProxy;
 
 public class ProxyManager
 {
-    readonly Channel<Config> _configChannel = Channel.CreateUnbounded<Config>();
+    readonly Channel<(PodmanProxyOptions, IPAddress)> _configChannel = Channel.CreateUnbounded<(PodmanProxyOptions, IPAddress)>();
 
-    public void UpdateConfig(Config config) => _configChannel.Writer.TryWrite(config);
+    public void UpdateConfig(PodmanProxyOptions options, IPAddress remoteAddress) => _configChannel.Writer.TryWrite((options, remoteAddress));
 
     public async Task Run(ILogger log, CancellationToken ct)
     {
@@ -22,10 +23,10 @@ public class ProxyManager
 
         while (!ct.IsCancellationRequested)
         {
-            var config = await _configChannel.Reader.ReadAsync(ct);
+            var (config, remote) = await _configChannel.Reader.ReadAsync(ct);
 
             // Add any new proxies
-            foreach (var proxyConfig in config.ParseProxyConfigs(log))
+            foreach (var proxyConfig in config.ParseProxyConfigs(log, remote))
             {
                 if (proxies.TryGetValue(proxyConfig.Config, out var existing))
                     if (IsStatusOk(existing.Task.Status)) // If it's not complete/faulted/canceled then keep using it
@@ -57,20 +58,27 @@ public class ProxyManager
             _ => true
         };
 
-    static Task ProxyFromConfig(ProxyConfig config, ILogger log, CancellationToken ct)
+    static async Task ProxyFromConfig(ProxyConfig config, ILogger log, CancellationToken ct)
     {
         try
         {
-            return config.Protocol switch
+            switch (config.Protocol)
             {
-                Protocol.Udp => UdpProxy.Start(log, config, ct),
-                Protocol.Tcp => TcpProxy.Start(log, config, ct),
-                _ => throw new InvalidOperationException($"protocol not supported {config.Protocol}")
-            };
+                case Protocol.Udp:
+                    await UdpProxy.Start(log, config, ct);
+                    break;
+
+                case Protocol.Tcp:
+                    await TcpProxy.Start(log, config, ct);
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"protocol not supported {config.Protocol}");
+            }
         }
         catch (Exception ex)
         {
-            log.LogError($"Failed to start \"{config}\" : {ex.Message}");
+            log.LogError("Failed to start \"{config}\" : {ex}", config, ex.Message);
             throw;
         }
     }

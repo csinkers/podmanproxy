@@ -1,29 +1,16 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace PodmanProxy;
 
-public class Worker(IConfiguration configuration, ILogger<Worker> logger) : BackgroundService
+public class Worker(IOptionsMonitor<PodmanProxyOptions> options, ILogger<Worker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         try
         {
-            var configPath = configuration.GetValue<string>("ConfigPath");
-            if (configPath == null)
-            {
-                logger.LogError("ConfigPath parameter must be supplied (e.g. --ConfigPath=C:\\...");
-                Environment.Exit(2);
-            }
-
-            if (!Path.IsPathRooted(configPath))
-            {
-                logger.LogError("ConfigPath parameter must specify an absolute path");
-                Environment.Exit(2);
-            }
-
-            await ProxyServer.Run(configPath, logger, ct);
+            await ProxyServer.Run(options, logger, ct);
         }
         catch (AggregateException ex)
         {

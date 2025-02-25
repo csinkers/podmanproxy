@@ -20,7 +20,7 @@ public class ClientWorker(IConfiguration configuration, ILogger<ClientWorker> lo
         {
             try
             {
-                var client = new UdpClient(AddressFamily.InterNetwork);
+                using var client = new UdpClient(AddressFamily.InterNetwork);
                 client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
 
                 var message = new byte[] { 1 };

@@ -20,7 +20,12 @@ public static class TcpProxy
         using var localServer = new TcpListener(new IPEndPoint(localIpAddress, config.LocalPort));
         localServer.Start();
 
-        log.LogInformation($"TCP proxy started [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
+        log.LogInformation(
+            "TCP proxy started [{localIp}]:{localPort} -> [{forwardIp}]:{forwardPort}",
+            localIpAddress,
+            config.LocalPort,
+            config.ForwardIp,
+            config.ForwardPort);
 
         _ = Task.Run(async () =>
         {
@@ -38,7 +43,7 @@ public static class TcpProxy
                     {
                         if (tcpConnection.LastActivityTickCount + ConnectionTimeoutMilliseconds < Environment.TickCount64)
                         {
-                            log.LogDebug($"Cleaning up idle TCP connection {tcpConnection}");
+                            log.LogDebug("Cleaning up idle TCP connection {tcpConnection}", tcpConnection);
                             tcpConnection.Stop();
                         }
                         else
@@ -66,12 +71,14 @@ public static class TcpProxy
                 connections.Add(tcpConnection);
             }
             catch (OperationCanceledException) { /* Expected during shutdown */ }
-            catch (Exception ex)
-            {
-                log.LogError(ex.ToString());
-            }
+            catch (Exception ex) { log.LogError("{ex}", ex); }
         }
 
-        log.LogInformation($"TCP proxy stopped [{localIpAddress}]:{config.LocalPort} -> [{config.ForwardIp}]:{config.ForwardPort}");
+        log.LogInformation(
+            "TCP proxy stopped [{localIp}]:{localPort} -> [{forwardIp}]:{forwardPort}",
+            localIpAddress,
+            config.LocalPort,
+            config.ForwardIp,
+            config.ForwardPort);
     }
 }

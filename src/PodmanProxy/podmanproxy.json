@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information"
+    },
+    "EventLog": {
+      "SourceName": "Podman Proxy",
+      "LogName": "Application"
+    }
+  },
+  "PodmanProxy": {
+    "ControlPort": 9188, // Note: Requires service restart if changed
+    "Proxies": [ // These should be dynamically reloaded without requiring a restart
+      "udp: 192.168.153.1:53  -> $remote:53", // bind9
+      "tcp: 192.168.153.1:53  -> $remote:53", // bind9
+      "tcp: 192.168.153.1:953 -> $remote:953", // bind9
+    ]
+  }
+}
