@@ -12,6 +12,7 @@ internal static class Program
 
     public static async Task Main(string[] args)
     {
+        Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
         var builder = Host.CreateApplicationBuilder(args);
         builder.Logging.AddSimpleConsole(x => x.SingleLine = true);
         builder.Configuration.AddJsonFile(ConfigFilename, false, true);
